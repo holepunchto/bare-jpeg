@@ -168,7 +168,7 @@ bare_jpeg_encode(js_env_t *env, js_callback_info_t *info) {
   jpeg_create_compress(&encoder);
 
   utf8_t *jpeg = NULL;
-  size_t len = 0;
+  unsigned long *len = 0;
   jpeg_mem_dest(&encoder, &jpeg, &len);
 
   encoder.image_width = width;
