@@ -4,7 +4,6 @@
 #include <js.h>
 #include <setjmp.h>
 #include <stdlib.h>
-#include <utf.h>
 
 typedef struct {
   struct jpeg_error_mgr handle;
@@ -167,7 +166,7 @@ bare_jpeg_encode(js_env_t *env, js_callback_info_t *info) {
 
   jpeg_create_compress(&encoder);
 
-  utf8_t *jpeg = NULL;
+  uint8_t *jpeg = NULL;
   unsigned long len = 0;
   jpeg_mem_dest(&encoder, &jpeg, &len);
 
@@ -194,10 +193,10 @@ bare_jpeg_encode(js_env_t *env, js_callback_info_t *info) {
 
   jpeg_start_compress(&encoder, true);
 
-  utf8_t *dst = malloc(width * 3);
+  uint8_t *dst = malloc(width * 3);
 
   while (encoder.next_scanline < encoder.image_height) {
-    const utf8_t *src = data + encoder.next_scanline * width * 4;
+    const uint8_t *src = data + encoder.next_scanline * width * 4;
 
     for (int x = 0; x < width; x++) {
       dst[x * 3 + 0] = src[x * 4 + 0];
