@@ -40,9 +40,9 @@ bare_jpeg_decode(js_env_t *env, js_callback_info_t *info) {
 
   assert(argc == 1);
 
-  void *jpeg;
+  uint8_t *jpeg;
   size_t len;
-  err = js_get_typedarray_info(env, argv[0], NULL, &jpeg, &len, NULL, NULL);
+  err = js_get_typedarray_info(env, argv[0], NULL, (void **) &jpeg, &len, NULL, NULL);
   assert(err == 0);
 
   bare_jpeg_error_t error;
@@ -97,8 +97,8 @@ bare_jpeg_decode(js_env_t *env, js_callback_info_t *info) {
 
   js_value_t *buffer;
 
-  void *data;
-  err = js_create_unsafe_arraybuffer(env, len, &data, &buffer);
+  uint8_t *data;
+  err = js_create_unsafe_arraybuffer(env, len, (void **) &data, &buffer);
   assert(err == 0);
 
   err = js_set_named_property(env, result, "data", buffer);
@@ -142,8 +142,8 @@ bare_jpeg_encode(js_env_t *env, js_callback_info_t *info) {
 
   assert(argc == 4);
 
-  void *data;
-  err = js_get_typedarray_info(env, argv[0], NULL, &data, NULL, NULL, NULL);
+  uint8_t *data;
+  err = js_get_typedarray_info(env, argv[0], NULL, (void **) &data, NULL, NULL, NULL);
   assert(err == 0);
 
   int64_t width;
