@@ -1,6 +1,6 @@
 {
   "name": "bare-jpeg",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "JPEG support for Bare",
   "exports": {
     "./package": "./package.json",
