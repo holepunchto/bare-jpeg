@@ -18,6 +18,15 @@ exports.encode = function encode(image, opts = {}) {
   return Buffer.from(buffer)
 }
 
+exports.readMarkers = function readMarkers(image) {
+  return binding.readMarkers(image).map(({ marker, data }) => {
+    return {
+      marker,
+      data: Buffer.from(data)
+    }
+  })
+}
+
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value))
 }

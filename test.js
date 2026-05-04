@@ -18,3 +18,15 @@ test('encode .jpg', (t) => {
 
   t.comment(jpeg.encode(decoded))
 })
+
+test('read markers', (t) => {
+  const image = require('./test/fixtures/grapefruit.jpg', {
+    with: { type: 'binary' }
+  })
+
+  const markers = jpeg.readMarkers(image)
+
+  t.ok(markers.length > 0)
+  t.ok(markers.every((marker) => Number.isInteger(marker.marker)))
+  t.ok(markers.every((marker) => Buffer.isBuffer(marker.data)))
+})

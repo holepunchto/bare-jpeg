@@ -4,6 +4,7 @@
 #include <js.h>
 #include <setjmp.h>
 #include <stdlib.h>
+#include <string.h>
 
 typedef struct {
   struct jpeg_error_mgr handle;
@@ -131,6 +132,99 @@ bare_jpeg_decode(js_env_t *env, js_callback_info_t *info) {
 }
 
 static js_value_t *
+bare_jpeg_read_markers(js_env_t *env, js_callback_info_t *info) {
+  int err;
+
+  size_t argc = 1;
+  js_value_t *argv[1];
+
+  err = js_get_callback_info(env, info, &argc, argv, NULL, NULL);
+  assert(err == 0);
+
+  assert(argc == 1);
+
+  uint8_t *jpeg;
+  size_t len;
+  err = js_get_typedarray_info(env, argv[0], NULL, (void **) &jpeg, &len, NULL, NULL);
+  assert(err == 0);
+
+  bare_jpeg_error_t error;
+
+  struct jpeg_decompress_struct decoder;
+
+  decoder.err = jpeg_std_error(&error.handle);
+
+  jpeg_create_decompress(&decoder);
+
+  error.handle.error_exit = bare_jpeg__on_error_exit;
+  error.handle.emit_message = bare_jpeg__on_emit_message;
+
+  if (setjmp(error.jump)) {
+  err:
+    err = js_throw_error(env, NULL, error.message);
+    assert(err == 0);
+
+    jpeg_destroy_decompress(&decoder);
+
+    return NULL;
+  }
+
+  jpeg_mem_src(&decoder, jpeg, len);
+
+  for (int marker = 0; marker < 16; marker++) {
+    jpeg_save_markers(&decoder, JPEG_APP0 + marker, 0xffff);
+  }
+
+  jpeg_save_markers(&decoder, JPEG_COM, 0xffff);
+
+  if (jpeg_read_header(&decoder, true) != JPEG_HEADER_OK) goto err;
+
+  uint32_t count = 0;
+
+  for (jpeg_saved_marker_ptr marker = decoder.marker_list; marker != NULL; marker = marker->next) {
+    count++;
+  }
+
+  js_value_t *result;
+  err = js_create_array_with_length(env, count, &result);
+  assert(err == 0);
+
+  uint32_t i = 0;
+
+  for (jpeg_saved_marker_ptr marker = decoder.marker_list; marker != NULL; marker = marker->next) {
+    js_value_t *entry;
+    err = js_create_object(env, &entry);
+    assert(err == 0);
+
+    js_value_t *marker_value;
+    err = js_create_uint32(env, marker->marker, &marker_value);
+    assert(err == 0);
+
+    err = js_set_named_property(env, entry, "marker", marker_value);
+    assert(err == 0);
+
+    uint8_t *data = malloc(marker->data_length == 0 ? 1 : marker->data_length);
+    assert(data != NULL);
+
+    memcpy(data, marker->data, marker->data_length);
+
+    js_value_t *buffer;
+    err = js_create_external_arraybuffer(env, data, marker->data_length, bare_jpeg__on_finalize, NULL, &buffer);
+    assert(err == 0);
+
+    err = js_set_named_property(env, entry, "data", buffer);
+    assert(err == 0);
+
+    err = js_set_element(env, result, i++, entry);
+    assert(err == 0);
+  }
+
+  jpeg_destroy_decompress(&decoder);
+
+  return result;
+}
+
+static js_value_t *
 bare_jpeg_encode(js_env_t *env, js_callback_info_t *info) {
   int err;
 
@@ -233,6 +327,7 @@ bare_jpeg_exports(js_env_t *env, js_value_t *exports) {
   }
 
   V("decode", bare_jpeg_decode)
+  V("readMarkers", bare_jpeg_read_markers)
   V("encode", bare_jpeg_encode)
 #undef V
 
