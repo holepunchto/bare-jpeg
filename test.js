@@ -41,13 +41,13 @@ test('replace markers', (t) => {
     with: { type: 'binary' }
   })
   const APP15 = 0xef
-  const data = Buffer.from('a marker')
+  const data = Buffer.from('one marker')
 
-  const output = jpeg.replaceMarkers(image, [{ marker: APP15, data }])
+  const outImage = jpeg.replaceMarkers(image, [{ marker: APP15, data }])
 
-  const { markers } = jpeg.readHeader(output)
-  const marker = markers.find((marker) => marker.marker === APP15)
-
-  t.ok(Buffer.isBuffer(output))
-  t.ok(marker.data.equals(data))
+  const { markers } = jpeg.readHeader(outImage)
+  t.ok(Buffer.isBuffer(outImage))
+  t.is(markers.length, 1)
+  t.is(markers[0].marker, APP15)
+  t.ok(markers[0].data.equals(data))
 })
