@@ -150,11 +150,11 @@ bare_jpeg_read_markers(js_env_t *env, js_callback_info_t *info) {
 
   bare_jpeg_error_t error;
 
-  struct jpeg_decompress_struct decoder;
+  struct jpeg_decompress_struct cinfo;
 
-  decoder.err = jpeg_std_error(&error.handle);
+  cinfo.err = jpeg_std_error(&error.handle);
 
-  jpeg_create_decompress(&decoder);
+  jpeg_create_decompress(&cinfo);
 
   error.handle.error_exit = bare_jpeg__on_error_exit;
   error.handle.emit_message = bare_jpeg__on_emit_message;
@@ -164,24 +164,24 @@ bare_jpeg_read_markers(js_env_t *env, js_callback_info_t *info) {
     err = js_throw_error(env, NULL, error.message);
     assert(err == 0);
 
-    jpeg_destroy_decompress(&decoder);
+    jpeg_destroy_decompress(&cinfo);
 
     return NULL;
   }
 
-  jpeg_mem_src(&decoder, jpeg, len);
+  jpeg_mem_src(&cinfo, jpeg, len);
 
   for (int marker = 0; marker < 16; marker++) {
-    jpeg_save_markers(&decoder, JPEG_APP0 + marker, 0xffff);
+    jpeg_save_markers(&cinfo, JPEG_APP0 + marker, 0xffff);
   }
 
-  jpeg_save_markers(&decoder, JPEG_COM, 0xffff);
+  jpeg_save_markers(&cinfo, JPEG_COM, 0xffff);
 
-  if (jpeg_read_header(&decoder, true) != JPEG_HEADER_OK) goto err;
+  if (jpeg_read_header(&cinfo, true) != JPEG_HEADER_OK) goto err;
 
   uint32_t count = 0;
 
-  for (jpeg_saved_marker_ptr marker = decoder.marker_list; marker != NULL; marker = marker->next) {
+  for (jpeg_saved_marker_ptr marker = cinfo.marker_list; marker != NULL; marker = marker->next) {
     count++;
   }
 
@@ -191,7 +191,7 @@ bare_jpeg_read_markers(js_env_t *env, js_callback_info_t *info) {
 
   uint32_t i = 0;
 
-  for (jpeg_saved_marker_ptr marker = decoder.marker_list; marker != NULL; marker = marker->next) {
+  for (jpeg_saved_marker_ptr marker = cinfo.marker_list; marker != NULL; marker = marker->next) {
     js_value_t *entry;
     err = js_create_object(env, &entry);
     assert(err == 0);
@@ -219,7 +219,7 @@ bare_jpeg_read_markers(js_env_t *env, js_callback_info_t *info) {
     assert(err == 0);
   }
 
-  jpeg_destroy_decompress(&decoder);
+  jpeg_destroy_decompress(&cinfo);
 
   return result;
 }
