@@ -36,14 +36,14 @@ test('read header', (t) => {
   t.ok(header.markers.every((m) => Buffer.isBuffer(m.data)))
 })
 
-test('write markers', (t) => {
+test('replace markers', (t) => {
   const image = require('./test/fixtures/grapefruit.jpg', {
     with: { type: 'binary' }
   })
   const APP15 = 0xef
   const data = Buffer.from('a marker')
 
-  const output = jpeg.writeMarkers(image, [{ marker: APP15, data }])
+  const output = jpeg.replaceMarkers(image, [{ marker: APP15, data }])
 
   const { markers } = jpeg.readHeader(output)
   const marker = markers.find((marker) => marker.marker === APP15)

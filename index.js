@@ -38,7 +38,7 @@ exports.readHeader = function readHeader(image) {
   }
 }
 
-exports.writeMarkers = function writeMarkers(image, markers = []) {
+exports.replaceMarkers = function replaceMarkers(image, markers = []) {
   if (image.length < 2 || image[0] !== MARKER_PREFIX || image[1] !== SOI) {
     throw new Error('Invalid JPEG')
   }
