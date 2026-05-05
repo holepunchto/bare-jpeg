@@ -132,6 +132,95 @@ bare_jpeg_decode(js_env_t *env, js_callback_info_t *info) {
 }
 
 static js_value_t *
+bare_jpeg_encode(js_env_t *env, js_callback_info_t *info) {
+  int err;
+
+  size_t argc = 4;
+  js_value_t *argv[4];
+
+  err = js_get_callback_info(env, info, &argc, argv, NULL, NULL);
+  assert(err == 0);
+
+  assert(argc == 4);
+
+  uint8_t *data;
+  err = js_get_typedarray_info(env, argv[0], NULL, (void **) &data, NULL, NULL, NULL);
+  assert(err == 0);
+
+  int64_t width;
+  err = js_get_value_int64(env, argv[1], &width);
+  assert(err == 0);
+
+  int64_t height;
+  err = js_get_value_int64(env, argv[2], &height);
+  assert(err == 0);
+
+  int64_t quality;
+  err = js_get_value_int64(env, argv[3], &quality);
+  assert(err == 0);
+
+  bare_jpeg_error_t error;
+
+  struct jpeg_compress_struct encoder;
+
+  encoder.err = jpeg_std_error(&error.handle);
+
+  jpeg_create_compress(&encoder);
+
+  uint8_t *jpeg = NULL;
+  unsigned long len = 0;
+  jpeg_mem_dest(&encoder, &jpeg, &len);
+
+  encoder.image_width = width;
+  encoder.image_height = height;
+  encoder.input_components = 3;
+  encoder.in_color_space = JCS_RGB;
+
+  jpeg_set_defaults(&encoder);
+  jpeg_set_quality(&encoder, quality, true);
+
+  error.handle.error_exit = bare_jpeg__on_error_exit;
+  error.handle.emit_message = bare_jpeg__on_emit_message;
+
+  if (setjmp(error.jump)) {
+  err:
+    err = js_throw_error(env, NULL, error.message);
+    assert(err == 0);
+
+    jpeg_destroy_compress(&encoder);
+
+    return NULL;
+  }
+
+  jpeg_start_compress(&encoder, true);
+
+  uint8_t *dst = malloc(width * 3);
+
+  while (encoder.next_scanline < encoder.image_height) {
+    const uint8_t *src = data + encoder.next_scanline * width * 4;
+
+    for (int x = 0; x < width; x++) {
+      dst[x * 3 + 0] = src[x * 4 + 0];
+      dst[x * 3 + 1] = src[x * 4 + 1];
+      dst[x * 3 + 2] = src[x * 4 + 2];
+    }
+
+    jpeg_write_scanlines(&encoder, &dst, 1);
+  }
+
+  free(dst);
+
+  jpeg_finish_compress(&encoder);
+  jpeg_destroy_compress(&encoder);
+
+  js_value_t *result;
+  err = js_create_external_arraybuffer(env, jpeg, len, bare_jpeg__on_finalize, NULL, &result);
+  assert(err == 0);
+
+  return result;
+}
+
+static js_value_t *
 bare_jpeg_read_markers(js_env_t *env, js_callback_info_t *info) {
   int err;
 
@@ -225,95 +314,6 @@ bare_jpeg_read_markers(js_env_t *env, js_callback_info_t *info) {
 }
 
 static js_value_t *
-bare_jpeg_encode(js_env_t *env, js_callback_info_t *info) {
-  int err;
-
-  size_t argc = 4;
-  js_value_t *argv[4];
-
-  err = js_get_callback_info(env, info, &argc, argv, NULL, NULL);
-  assert(err == 0);
-
-  assert(argc == 4);
-
-  uint8_t *data;
-  err = js_get_typedarray_info(env, argv[0], NULL, (void **) &data, NULL, NULL, NULL);
-  assert(err == 0);
-
-  int64_t width;
-  err = js_get_value_int64(env, argv[1], &width);
-  assert(err == 0);
-
-  int64_t height;
-  err = js_get_value_int64(env, argv[2], &height);
-  assert(err == 0);
-
-  int64_t quality;
-  err = js_get_value_int64(env, argv[3], &quality);
-  assert(err == 0);
-
-  bare_jpeg_error_t error;
-
-  struct jpeg_compress_struct encoder;
-
-  encoder.err = jpeg_std_error(&error.handle);
-
-  jpeg_create_compress(&encoder);
-
-  uint8_t *jpeg = NULL;
-  unsigned long len = 0;
-  jpeg_mem_dest(&encoder, &jpeg, &len);
-
-  encoder.image_width = width;
-  encoder.image_height = height;
-  encoder.input_components = 3;
-  encoder.in_color_space = JCS_RGB;
-
-  jpeg_set_defaults(&encoder);
-  jpeg_set_quality(&encoder, quality, true);
-
-  error.handle.error_exit = bare_jpeg__on_error_exit;
-  error.handle.emit_message = bare_jpeg__on_emit_message;
-
-  if (setjmp(error.jump)) {
-  err:
-    err = js_throw_error(env, NULL, error.message);
-    assert(err == 0);
-
-    jpeg_destroy_compress(&encoder);
-
-    return NULL;
-  }
-
-  jpeg_start_compress(&encoder, true);
-
-  uint8_t *dst = malloc(width * 3);
-
-  while (encoder.next_scanline < encoder.image_height) {
-    const uint8_t *src = data + encoder.next_scanline * width * 4;
-
-    for (int x = 0; x < width; x++) {
-      dst[x * 3 + 0] = src[x * 4 + 0];
-      dst[x * 3 + 1] = src[x * 4 + 1];
-      dst[x * 3 + 2] = src[x * 4 + 2];
-    }
-
-    jpeg_write_scanlines(&encoder, &dst, 1);
-  }
-
-  free(dst);
-
-  jpeg_finish_compress(&encoder);
-  jpeg_destroy_compress(&encoder);
-
-  js_value_t *result;
-  err = js_create_external_arraybuffer(env, jpeg, len, bare_jpeg__on_finalize, NULL, &result);
-  assert(err == 0);
-
-  return result;
-}
-
-static js_value_t *
 bare_jpeg_exports(js_env_t *env, js_value_t *exports) {
   int err;
 
@@ -327,8 +327,8 @@ bare_jpeg_exports(js_env_t *env, js_value_t *exports) {
   }
 
   V("decode", bare_jpeg_decode)
-  V("readMarkers", bare_jpeg_read_markers)
   V("encode", bare_jpeg_encode)
+  V("readMarkers", bare_jpeg_read_markers)
 #undef V
 
   return exports;
