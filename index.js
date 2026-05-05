@@ -26,13 +26,16 @@ exports.encode = function encode(image, opts = {}) {
   return Buffer.from(buffer)
 }
 
-exports.readMarkers = function readMarkers(image) {
-  return binding.readMarkers(image).map(({ marker, data }) => {
-    return {
+exports.readHeader = function readHeader(image) {
+  const header = binding.readHeader(image)
+
+  return {
+    ...header,
+    markers: header.markers.map(({ marker, data }) => ({
       marker,
       data: Buffer.from(data)
-    }
-  })
+    }))
+  }
 }
 
 exports.writeMarkers = function writeMarkers(image, markers = []) {

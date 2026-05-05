@@ -19,16 +19,21 @@ test('encode .jpg', (t) => {
   t.comment(jpeg.encode(decoded))
 })
 
-test('read markers', (t) => {
+test('read header', (t) => {
   const image = require('./test/fixtures/grapefruit.jpg', {
     with: { type: 'binary' }
   })
 
-  const markers = jpeg.readMarkers(image)
+  const header = jpeg.readHeader(image)
 
-  t.ok(markers.length > 0)
-  t.ok(markers.every((marker) => Number.isInteger(marker.marker)))
-  t.ok(markers.every((marker) => Buffer.isBuffer(marker.data)))
+  t.ok(Number.isInteger(header.width))
+  t.ok(Number.isInteger(header.height))
+  t.ok(Number.isInteger(header.components))
+  t.is(header.componentInfo.length, header.components)
+  t.ok(Array.isArray(header.componentInfo))
+  t.ok(Array.isArray(header.markers))
+  t.ok(header.markers.every((m) => Number.isInteger(m.marker)))
+  t.ok(header.markers.every((m) => Buffer.isBuffer(m.data)))
 })
 
 test('write markers', (t) => {
@@ -40,7 +45,7 @@ test('write markers', (t) => {
 
   const output = jpeg.writeMarkers(image, [{ marker: APP15, data }])
 
-  const markers = jpeg.readMarkers(output)
+  const { markers } = jpeg.readHeader(output)
   const marker = markers.find((marker) => marker.marker === APP15)
 
   t.ok(Buffer.isBuffer(output))

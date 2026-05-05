@@ -221,7 +221,7 @@ bare_jpeg_encode(js_env_t *env, js_callback_info_t *info) {
 }
 
 static js_value_t *
-bare_jpeg_read_markers(js_env_t *env, js_callback_info_t *info) {
+bare_jpeg_read_header(js_env_t *env, js_callback_info_t *info) {
   int err;
 
   size_t argc = 1;
@@ -268,45 +268,155 @@ bare_jpeg_read_markers(js_env_t *env, js_callback_info_t *info) {
 
   if (jpeg_read_header(&cinfo, true) != JPEG_HEADER_OK) goto err;
 
-  uint32_t count = 0;
-
-  for (jpeg_saved_marker_ptr marker = cinfo.marker_list; marker != NULL; marker = marker->next) {
-    count++;
-  }
-
   js_value_t *result;
-  err = js_create_array_with_length(env, count, &result);
+  err = js_create_object(env, &result);
   assert(err == 0);
 
-  uint32_t i = 0;
+#define V_INT(target, name, value) \
+  { \
+    js_value_t *val; \
+    err = js_create_int64(env, value, &val); \
+    assert(err == 0); \
+    err = js_set_named_property(env, target, name, val); \
+    assert(err == 0); \
+  }
 
-  for (jpeg_saved_marker_ptr marker = cinfo.marker_list; marker != NULL; marker = marker->next) {
+#define V_BOOL(target, name, value) \
+  { \
+    js_value_t *val; \
+    err = js_get_boolean(env, value, &val); \
+    assert(err == 0); \
+    err = js_set_named_property(env, target, name, val); \
+    assert(err == 0); \
+  }
+
+  V_INT(result, "width", cinfo.image_width);
+  V_INT(result, "height", cinfo.image_height);
+  V_INT(result, "components", cinfo.num_components);
+  V_INT(result, "precision", cinfo.data_precision);
+  V_INT(result, "colorSpace", cinfo.jpeg_color_space);
+  V_INT(result, "outputColorSpace", cinfo.out_color_space);
+  V_BOOL(result, "progressive", cinfo.progressive_mode);
+  V_BOOL(result, "arithmetic", cinfo.arith_code);
+  V_INT(result, "restartInterval", cinfo.restart_interval);
+  V_INT(result, "maxHSampFactor", cinfo.max_h_samp_factor);
+  V_INT(result, "maxVSampFactor", cinfo.max_v_samp_factor);
+  V_BOOL(result, "ccir601Sampling", cinfo.CCIR601_sampling);
+
+  js_value_t *component_info;
+  err = js_create_array_with_length(env, cinfo.num_components, &component_info);
+  assert(err == 0);
+
+  for (int c = 0; c < cinfo.num_components; c++) {
+    jpeg_component_info *ci = &cinfo.comp_info[c];
+
     js_value_t *entry;
     err = js_create_object(env, &entry);
     assert(err == 0);
 
-    js_value_t *marker_value;
-    err = js_create_uint32(env, marker->marker, &marker_value);
+    V_INT(entry, "id", ci->component_id);
+    V_INT(entry, "hSampFactor", ci->h_samp_factor);
+    V_INT(entry, "vSampFactor", ci->v_samp_factor);
+    V_INT(entry, "quantTblNo", ci->quant_tbl_no);
+
+    err = js_set_element(env, component_info, c, entry);
+    assert(err == 0);
+  }
+
+  err = js_set_named_property(env, result, "componentInfo", component_info);
+  assert(err == 0);
+
+  int quant_tables = 0;
+  for (int i = 0; i < NUM_QUANT_TBLS; i++) {
+    if (cinfo.quant_tbl_ptrs[i] != NULL) quant_tables++;
+  }
+
+  int dc_huff = 0, ac_huff = 0;
+  for (int i = 0; i < NUM_HUFF_TBLS; i++) {
+    if (cinfo.dc_huff_tbl_ptrs[i] != NULL) dc_huff++;
+    if (cinfo.ac_huff_tbl_ptrs[i] != NULL) ac_huff++;
+  }
+
+  V_INT(result, "quantTables", quant_tables);
+  V_INT(result, "dcHuffmanTables", dc_huff);
+  V_INT(result, "acHuffmanTables", ac_huff);
+
+  if (cinfo.saw_JFIF_marker) {
+    js_value_t *jfif;
+    err = js_create_object(env, &jfif);
     assert(err == 0);
 
-    err = js_set_named_property(env, entry, "marker", marker_value);
+    V_INT(jfif, "majorVersion", cinfo.JFIF_major_version);
+    V_INT(jfif, "minorVersion", cinfo.JFIF_minor_version);
+    V_INT(jfif, "densityUnit", cinfo.density_unit);
+    V_INT(jfif, "xDensity", cinfo.X_density);
+    V_INT(jfif, "yDensity", cinfo.Y_density);
+
+    err = js_set_named_property(env, result, "jfif", jfif);
+    assert(err == 0);
+  } else {
+    js_value_t *null_val;
+    err = js_get_null(env, &null_val);
+    assert(err == 0);
+    err = js_set_named_property(env, result, "jfif", null_val);
+    assert(err == 0);
+  }
+
+  if (cinfo.saw_Adobe_marker) {
+    js_value_t *adobe;
+    err = js_create_object(env, &adobe);
     assert(err == 0);
 
-    uint8_t *data = malloc(marker->data_length == 0 ? 1 : marker->data_length);
+    V_INT(adobe, "transform", cinfo.Adobe_transform);
+
+    err = js_set_named_property(env, result, "adobe", adobe);
+    assert(err == 0);
+  } else {
+    js_value_t *null_val;
+    err = js_get_null(env, &null_val);
+    assert(err == 0);
+    err = js_set_named_property(env, result, "adobe", null_val);
+    assert(err == 0);
+  }
+
+  uint32_t count = 0;
+  for (jpeg_saved_marker_ptr m = cinfo.marker_list; m != NULL; m = m->next) {
+    count++;
+  }
+
+  js_value_t *markers;
+  err = js_create_array_with_length(env, count, &markers);
+  assert(err == 0);
+
+  uint32_t i = 0;
+  for (jpeg_saved_marker_ptr m = cinfo.marker_list; m != NULL; m = m->next) {
+    js_value_t *entry;
+    err = js_create_object(env, &entry);
+    assert(err == 0);
+
+    V_INT(entry, "marker", m->marker);
+
+    uint8_t *data = malloc(m->data_length == 0 ? 1 : m->data_length);
     assert(data != NULL);
 
-    memcpy(data, marker->data, marker->data_length);
+    memcpy(data, m->data, m->data_length);
 
     js_value_t *buffer;
-    err = js_create_external_arraybuffer(env, data, marker->data_length, bare_jpeg__on_finalize, NULL, &buffer);
+    err = js_create_external_arraybuffer(env, data, m->data_length, bare_jpeg__on_finalize, NULL, &buffer);
     assert(err == 0);
 
     err = js_set_named_property(env, entry, "data", buffer);
     assert(err == 0);
 
-    err = js_set_element(env, result, i++, entry);
+    err = js_set_element(env, markers, i++, entry);
     assert(err == 0);
   }
+
+  err = js_set_named_property(env, result, "markers", markers);
+  assert(err == 0);
+
+#undef V_BOOL
+#undef V_INT
 
   jpeg_destroy_decompress(&cinfo);
 
@@ -328,7 +438,7 @@ bare_jpeg_exports(js_env_t *env, js_value_t *exports) {
 
   V("decode", bare_jpeg_decode)
   V("encode", bare_jpeg_encode)
-  V("readMarkers", bare_jpeg_read_markers)
+  V("readHeader", bare_jpeg_read_header)
 #undef V
 
   return exports;

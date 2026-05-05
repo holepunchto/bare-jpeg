@@ -24,21 +24,29 @@ const encoded = jpeg.encode(decoded)
 // <Buffer>
 ```
 
-Markers:
+Header:
 
 ```js
-const markers = jpeg.readMarkers(image)
-// [{ marker: 224, data: <Buffer> }, ...]
+const header = jpeg.readHeader(image)
+// {
+//   width: 200,
+//   height: 400,
+//   colorSpace: 3,
+//   ...
+//   markers: [{ marker: 224, data: <Buffer> }, ...] // APP0-APP15 and COM
+// }
+```
 
+Utility to replace markers:
+
+```js
 const newImage = jpeg.writeMarkers(image, [
   { marker: 0xfe, data: Buffer.from('This is a comment') }
 ])
 // <Buffer>
 ```
 
-`readMarkers()`: returns `APP0`-`APP15` and `COM` markers.
-
-`writeMarkers()`: returns a new image with replacing `APP0`-`APP15` and `COM` markers in an existing JPEG without re-encoding the pixel data.
+`writeMarkers()` returns a new image, replacing the existing `APP0`-`APP15` and `COM` markers without re-encoding the pixel data.
 
 ## License
 
