@@ -26,13 +26,32 @@ test('read header', (t) => {
 
   const header = jpeg.readHeader(image)
 
-  t.ok(Number.isInteger(header.width))
-  t.ok(Number.isInteger(header.height))
-  t.ok(Number.isInteger(header.components))
+  t.is(header.width, 332)
+  t.is(header.height, 332)
+  t.is(header.components, 3)
   t.is(header.componentInfo.length, header.components)
-  t.ok(Array.isArray(header.componentInfo))
+  t.alike(header.componentInfo, [
+    { id: 1, hSampFactor: 2, vSampFactor: 2, quantTblNo: 0 },
+    { id: 2, hSampFactor: 1, vSampFactor: 1, quantTblNo: 1 },
+    { id: 3, hSampFactor: 1, vSampFactor: 1, quantTblNo: 1 }
+  ])
+  t.is(header.precision, 8)
+  t.is(header.progressive, true)
+  t.is(header.restartInterval, 0)
+  t.is(header.quantTables, 2)
+  t.is(header.dcHuffmanTables, 2)
+  t.is(header.acHuffmanTables, 2)
+  t.is(header.jfif.majorVersion, 1)
+  t.is(header.jfif.minorVersion, 1)
+  t.is(header.jfif.densityUnit, 0)
+  t.is(header.jfif.xDensity, 72)
+  t.is(header.jfif.yDensity, 72)
+  t.is(header.adobe, null)
   t.ok(Array.isArray(header.markers))
-  t.ok(header.markers.every((m) => Number.isInteger(m.marker)))
+  t.is(header.markers.length, 3)
+  t.is(header.markers[0].marker, 0xe0)
+  t.is(header.markers[1].marker, 0xe1)
+  t.is(header.markers[2].marker, 0xed)
   t.ok(header.markers.every((m) => Buffer.isBuffer(m.data)))
 })
 
