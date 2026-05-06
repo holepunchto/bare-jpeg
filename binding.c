@@ -271,7 +271,7 @@ bare_jpeg_read_header(js_env_t *env, js_callback_info_t *info) {
   err = js_create_object(env, &result);
   assert(err == 0);
 
-#define V_INT(target, name, value) \
+#define V_SET_INT(target, name, value) \
   { \
     js_value_t *val; \
     err = js_create_int64(env, value, &val); \
