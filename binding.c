@@ -289,18 +289,18 @@ bare_jpeg_read_header(js_env_t *env, js_callback_info_t *info) {
     assert(err == 0); \
   }
 
-  V_INT(result, "width", cinfo.image_width);
-  V_INT(result, "height", cinfo.image_height);
-  V_INT(result, "components", cinfo.num_components);
-  V_INT(result, "precision", cinfo.data_precision);
-  V_INT(result, "colorSpace", cinfo.jpeg_color_space);
-  V_INT(result, "outputColorSpace", cinfo.out_color_space);
-  V_BOOL(result, "progressive", cinfo.progressive_mode);
-  V_BOOL(result, "arithmetic", cinfo.arith_code);
-  V_INT(result, "restartInterval", cinfo.restart_interval);
-  V_INT(result, "maxHSampFactor", cinfo.max_h_samp_factor);
-  V_INT(result, "maxVSampFactor", cinfo.max_v_samp_factor);
-  V_BOOL(result, "ccir601Sampling", cinfo.CCIR601_sampling);
+  V_SET_INT(result, "width", cinfo.image_width);
+  V_SET_INT(result, "height", cinfo.image_height);
+  V_SET_INT(result, "components", cinfo.num_components);
+  V_SET_INT(result, "precision", cinfo.data_precision);
+  V_SET_INT(result, "colorSpace", cinfo.jpeg_color_space);
+  V_SET_INT(result, "outputColorSpace", cinfo.out_color_space);
+  V_SET_BOOL(result, "progressive", cinfo.progressive_mode);
+  V_SET_BOOL(result, "arithmetic", cinfo.arith_code);
+  V_SET_INT(result, "restartInterval", cinfo.restart_interval);
+  V_SET_INT(result, "maxHSampFactor", cinfo.max_h_samp_factor);
+  V_SET_INT(result, "maxVSampFactor", cinfo.max_v_samp_factor);
+  V_SET_BOOL(result, "ccir601Sampling", cinfo.CCIR601_sampling);
 
   js_value_t *component_info;
   err = js_create_array_with_length(env, cinfo.num_components, &component_info);
@@ -313,10 +313,10 @@ bare_jpeg_read_header(js_env_t *env, js_callback_info_t *info) {
     err = js_create_object(env, &entry);
     assert(err == 0);
 
-    V_INT(entry, "id", ci->component_id);
-    V_INT(entry, "hSampFactor", ci->h_samp_factor);
-    V_INT(entry, "vSampFactor", ci->v_samp_factor);
-    V_INT(entry, "quantTblNo", ci->quant_tbl_no);
+    V_SET_INT(entry, "id", ci->component_id);
+    V_SET_INT(entry, "hSampFactor", ci->h_samp_factor);
+    V_SET_INT(entry, "vSampFactor", ci->v_samp_factor);
+    V_SET_INT(entry, "quantTblNo", ci->quant_tbl_no);
 
     err = js_set_element(env, component_info, c, entry);
     assert(err == 0);
@@ -336,20 +336,20 @@ bare_jpeg_read_header(js_env_t *env, js_callback_info_t *info) {
     if (cinfo.ac_huff_tbl_ptrs[i] != NULL) ac_huff++;
   }
 
-  V_INT(result, "quantTables", quant_tables);
-  V_INT(result, "dcHuffmanTables", dc_huff);
-  V_INT(result, "acHuffmanTables", ac_huff);
+  V_SET_INT(result, "quantTables", quant_tables);
+  V_SET_INT(result, "dcHuffmanTables", dc_huff);
+  V_SET_INT(result, "acHuffmanTables", ac_huff);
 
   if (cinfo.saw_JFIF_marker) {
     js_value_t *jfif;
     err = js_create_object(env, &jfif);
     assert(err == 0);
 
-    V_INT(jfif, "majorVersion", cinfo.JFIF_major_version);
-    V_INT(jfif, "minorVersion", cinfo.JFIF_minor_version);
-    V_INT(jfif, "densityUnit", cinfo.density_unit);
-    V_INT(jfif, "xDensity", cinfo.X_density);
-    V_INT(jfif, "yDensity", cinfo.Y_density);
+    V_SET_INT(jfif, "majorVersion", cinfo.JFIF_major_version);
+    V_SET_INT(jfif, "minorVersion", cinfo.JFIF_minor_version);
+    V_SET_INT(jfif, "densityUnit", cinfo.density_unit);
+    V_SET_INT(jfif, "xDensity", cinfo.X_density);
+    V_SET_INT(jfif, "yDensity", cinfo.Y_density);
 
     err = js_set_named_property(env, result, "jfif", jfif);
     assert(err == 0);
@@ -366,7 +366,7 @@ bare_jpeg_read_header(js_env_t *env, js_callback_info_t *info) {
     err = js_create_object(env, &adobe);
     assert(err == 0);
 
-    V_INT(adobe, "transform", cinfo.Adobe_transform);
+    V_SET_INT(adobe, "transform", cinfo.Adobe_transform);
 
     err = js_set_named_property(env, result, "adobe", adobe);
     assert(err == 0);
@@ -393,7 +393,7 @@ bare_jpeg_read_header(js_env_t *env, js_callback_info_t *info) {
     err = js_create_object(env, &entry);
     assert(err == 0);
 
-    V_INT(entry, "marker", m->marker);
+    V_SET_INT(entry, "marker", m->marker);
 
     uint8_t *data = malloc(m->data_length == 0 ? 1 : m->data_length);
     assert(data != NULL);
@@ -414,8 +414,8 @@ bare_jpeg_read_header(js_env_t *env, js_callback_info_t *info) {
   err = js_set_named_property(env, result, "markers", markers);
   assert(err == 0);
 
-#undef V_BOOL
-#undef V_INT
+#undef V_SET_BOOL
+#undef V_SET_INT
 
   jpeg_destroy_decompress(&cinfo);
 
