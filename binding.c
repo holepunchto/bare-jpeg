@@ -280,7 +280,7 @@ bare_jpeg_read_header(js_env_t *env, js_callback_info_t *info) {
     assert(err == 0); \
   }
 
-#define V_BOOL(target, name, value) \
+#define V_SET_BOOL(target, name, value) \
   { \
     js_value_t *val; \
     err = js_get_boolean(env, value, &val); \
