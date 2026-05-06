@@ -238,7 +238,6 @@ bare_jpeg_read_header(js_env_t *env, js_callback_info_t *info) {
   assert(err == 0);
 
   bare_jpeg_error_t error;
-
   struct jpeg_decompress_struct cinfo;
 
   cinfo.err = jpeg_std_error(&error.handle);
