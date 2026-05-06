@@ -9,6 +9,13 @@ test('decode .jpg', (t) => {
   t.comment(jpeg.decode(image))
 })
 
+test('decode should throw on invalid .jpg', (t) => {
+  const invalid = Buffer.from('this is not a jpeg')
+  t.exception(() => {
+    jpeg.decode(invalid)
+  }, /Not a JPEG file/i)
+})
+
 test('encode .jpg', (t) => {
   const image = require('./test/fixtures/grapefruit.jpg', {
     with: { type: 'binary' }
@@ -19,7 +26,18 @@ test('encode .jpg', (t) => {
   t.comment(jpeg.encode(decoded))
 })
 
-test('read header', (t) => {
+test('encode should throw on invalid rgba', (t) => {
+  const invalid = {
+    width: 0,
+    height: 0,
+    data: Buffer.alloc(1)
+  }
+  t.exception(() => {
+    jpeg.encode(invalid)
+  }, /Empty JPEG image/i)
+})
+
+test('readHeader of a .jpg', (t) => {
   const image = require('./test/fixtures/grapefruit.jpg', {
     with: { type: 'binary' }
   })
@@ -53,6 +71,13 @@ test('read header', (t) => {
   t.is(header.markers[1].marker, 0xe1)
   t.is(header.markers[2].marker, 0xed)
   t.ok(header.markers.every((m) => Buffer.isBuffer(m.data)))
+})
+
+test('readHeader should throw on invalid .jpg', (t) => {
+  const invalid = Buffer.from('this is not a jpeg')
+  t.exception(() => {
+    jpeg.readHeader(invalid)
+  }, /Not a JPEG file/i)
 })
 
 test('replace markers', (t) => {
