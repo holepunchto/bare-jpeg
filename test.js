@@ -95,3 +95,21 @@ test('replace markers', (t) => {
   t.is(markers[0].marker, APP15)
   t.ok(markers[0].data.equals(data))
 })
+
+test('replace markers preserves segment order', (t) => {
+  const image = require('./test/fixtures/grapefruit.jpg', {
+    with: { type: 'binary' }
+  })
+
+  const header = jpeg.readHeader(image)
+  const outImage = jpeg.replaceMarkers(image, header.markers)
+  const headerOut = jpeg.readHeader(outImage)
+
+  t.ok(Buffer.isBuffer(outImage))
+  t.is(header.markers.length, headerOut.markers.length)
+  t.is(header.markers.length, 3)
+  t.ok(header.markers[0].data.equals(headerOut.markers[0].data))
+  t.ok(header.markers[1].data.equals(headerOut.markers[1].data))
+  t.ok(header.markers[2].data.equals(headerOut.markers[2].data))
+  t.ok(image.equals(outImage))
+})

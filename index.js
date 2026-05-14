@@ -45,6 +45,8 @@ exports.replaceMarkers = function replaceMarkers(image, markers = []) {
 
   const output = [image.subarray(0, 2)]
   let offset = 2
+  let next = 0
+  let insertAt = 1
 
   while (offset < image.length) {
     const start = offset
@@ -60,18 +62,13 @@ exports.replaceMarkers = function replaceMarkers(image, markers = []) {
     const marker = image[offset]
 
     if (marker === SOS || marker === EOI) {
-      for (const marker of markers) {
-        const payload = Buffer.from(marker.data)
-        const segment = Buffer.allocUnsafe(payload.length + 4)
-
-        segment[0] = MARKER_PREFIX
-        segment[1] = marker.marker
-        segment.writeUInt16BE(payload.length + 2, 2)
-        payload.copy(segment, 4)
-
-        output.push(segment)
+      const leftover = []
+      while (next < markers.length) {
+        leftover.push(buildSegment(markers[next++]))
       }
-
+      if (leftover.length > 0) {
+        output.splice(insertAt, 0, ...leftover)
+      }
       output.push(image.subarray(start))
       return Buffer.concat(output)
     }
@@ -87,7 +84,12 @@ exports.replaceMarkers = function replaceMarkers(image, markers = []) {
       throw new Error('Invalid JPEG')
     }
 
-    if ((marker < APP0 || marker > APP15) && marker !== COM) {
+    if ((marker >= APP0 && marker <= APP15) || marker === COM) {
+      if (next < markers.length) {
+        output.push(buildSegment(markers[next++]))
+        insertAt = output.length
+      }
+    } else {
       output.push(image.subarray(start, end))
     }
 
@@ -95,6 +97,18 @@ exports.replaceMarkers = function replaceMarkers(image, markers = []) {
   }
 
   throw new Error('Invalid JPEG')
+}
+
+function buildSegment(marker) {
+  const payload = Buffer.from(marker.data)
+  const segment = Buffer.allocUnsafe(payload.length + 4)
+
+  segment[0] = MARKER_PREFIX
+  segment[1] = marker.marker
+  segment.writeUInt16BE(payload.length + 2, 2)
+  payload.copy(segment, 4)
+
+  return segment
 }
 
 function clamp(value, min, max) {
