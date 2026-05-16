@@ -111,5 +111,5 @@ test('replace markers preserves segment order', (t) => {
   t.alike(header.markers[0].data, headerOut.markers[0].data)
   t.alike(header.markers[1].data, headerOut.markers[1].data)
   t.alike(header.markers[2].data, headerOut.markers[2].data)
-  t.alike(image, outImage)
+  t.alike(image, outImage) // if the roundtrip is identical, segments stayed in the same order
 })
