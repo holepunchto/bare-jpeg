@@ -95,3 +95,21 @@ test('replace markers', (t) => {
   t.is(markers[0].marker, APP15)
   t.ok(markers[0].data.equals(data))
 })
+
+test('replace markers preserves segment order', (t) => {
+  const image = require('./test/fixtures/grapefruit.jpg', {
+    with: { type: 'binary' }
+  })
+
+  const header = jpeg.readHeader(image)
+  const outImage = jpeg.replaceMarkers(image, header.markers)
+  const headerOut = jpeg.readHeader(outImage)
+
+  t.ok(Buffer.isBuffer(outImage))
+  t.is(header.markers.length, headerOut.markers.length)
+  t.is(header.markers.length, 3)
+  t.alike(header.markers[0].data, headerOut.markers[0].data)
+  t.alike(header.markers[1].data, headerOut.markers[1].data)
+  t.alike(header.markers[2].data, headerOut.markers[2].data)
+  t.alike(image, outImage) // if the roundtrip is identical, segments stayed in the same order
+})
