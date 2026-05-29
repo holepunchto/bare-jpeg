@@ -6,7 +6,10 @@ test('decode .jpg', (t) => {
     with: { type: 'binary' }
   })
 
-  t.comment(jpeg.decode(image))
+  const decoded = jpeg.decode(image)
+
+  t.comment(decoded)
+  t.is(decoded.data.length, decoded.width * decoded.height * 4)
 })
 
 test('decode should throw on invalid .jpg', (t) => {
@@ -35,6 +38,53 @@ test('encode should throw on invalid rgba', (t) => {
   t.exception(() => {
     jpeg.encode(invalid)
   }, /Empty JPEG image/i)
+})
+
+test('encode should throw on width above JPEG max dimension', (t) => {
+  const invalid = {
+    width: 65501,
+    height: 1,
+    data: Buffer.alloc(4)
+  }
+  t.exception(() => {
+    jpeg.encode(invalid)
+  }, /Invalid JPEG dimensions/i)
+})
+
+test('encode should throw on height above JPEG max dimension', (t) => {
+  const invalid = {
+    width: 1,
+    height: 65501,
+    data: Buffer.alloc(4)
+  }
+  t.exception(() => {
+    jpeg.encode(invalid)
+  }, /Invalid JPEG dimensions/i)
+})
+
+test('encode should throw on width that overflows uint32', (t) => {
+  // Without validation this truncates to a small value when assigned to the
+  // libjpeg encoder's uint32 image_width, so libjpeg accepts it; the malloc
+  // and per-row write loop still see the un-truncated int64 width.
+  const invalid = {
+    width: 0x100000064,
+    height: 1,
+    data: Buffer.alloc(4)
+  }
+  t.exception(() => {
+    jpeg.encode(invalid)
+  }, /Invalid JPEG dimensions/i)
+})
+
+test('encode should throw on negative dimensions', (t) => {
+  const invalid = {
+    width: -1,
+    height: 1,
+    data: Buffer.alloc(4)
+  }
+  t.exception(() => {
+    jpeg.encode(invalid)
+  }, /Invalid JPEG dimensions/i)
 })
 
 test('readHeader of a .jpg', (t) => {

@@ -73,9 +73,9 @@ bare_jpeg_decode(js_env_t *env, js_callback_info_t *info) {
 
   jpeg_start_decompress(&decoder);
 
-  int width = decoder.output_width;
-  int height = decoder.output_height;
-  int channels = decoder.output_components;
+  JDIMENSION width = decoder.output_width;
+  JDIMENSION height = decoder.output_height;
+  JDIMENSION channels = decoder.output_components;
 
   js_value_t *result;
   err = js_create_object(env, &result);
@@ -94,7 +94,7 @@ bare_jpeg_decode(js_env_t *env, js_callback_info_t *info) {
   V(height);
 #undef V
 
-  len = width * height * 4;
+  len = (size_t) width * height * 4;
 
   js_value_t *buffer;
 
@@ -107,15 +107,15 @@ bare_jpeg_decode(js_env_t *env, js_callback_info_t *info) {
 
   JSAMPARRAY scanlines = (*decoder.mem->alloc_sarray)((j_common_ptr) &decoder, JPOOL_IMAGE, width * channels, 1);
 
-  int row = 0;
+  JDIMENSION row = 0;
 
   while (decoder.output_scanline < decoder.output_height) {
     jpeg_read_scanlines(&decoder, scanlines, 1);
 
     const uint8_t *src = scanlines[0];
-    uint8_t *dst = data + row * width * 4;
+    uint8_t *dst = data + (size_t) row * width * 4;
 
-    for (int x = 0; x < width; x++) {
+    for (JDIMENSION x = 0; x < width; x++) {
       dst[x * 4 + 0] = src[x * channels + 0];
       dst[x * 4 + 1] = src[x * channels + 1];
       dst[x * 4 + 2] = src[x * channels + 2];
@@ -159,6 +159,13 @@ bare_jpeg_encode(js_env_t *env, js_callback_info_t *info) {
   err = js_get_value_int64(env, argv[3], &quality);
   assert(err == 0);
 
+  if (width < 0 || width > JPEG_MAX_DIMENSION || height < 0 || height > JPEG_MAX_DIMENSION) {
+    err = js_throw_error(env, NULL, "Invalid JPEG dimensions");
+    assert(err == 0);
+
+    return NULL;
+  }
+
   bare_jpeg_error_t error;
 
   struct jpeg_compress_struct encoder;
@@ -194,12 +201,12 @@ bare_jpeg_encode(js_env_t *env, js_callback_info_t *info) {
 
   jpeg_start_compress(&encoder, true);
 
-  uint8_t *dst = malloc(width * 3);
+  uint8_t *dst = malloc((size_t) width * 3);
 
   while (encoder.next_scanline < encoder.image_height) {
-    const uint8_t *src = data + encoder.next_scanline * width * 4;
+    const uint8_t *src = data + (size_t) encoder.next_scanline * width * 4;
 
-    for (int x = 0; x < width; x++) {
+    for (JDIMENSION x = 0; x < (JDIMENSION) width; x++) {
       dst[x * 3 + 0] = src[x * 4 + 0];
       dst[x * 3 + 1] = src[x * 4 + 1];
       dst[x * 3 + 2] = src[x * 4 + 2];
