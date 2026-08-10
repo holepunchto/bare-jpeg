@@ -176,6 +176,7 @@ bare_jpeg_encode(js_env_t *env, js_callback_info_t *info) {
 
   uint8_t *jpeg = NULL;
   unsigned long len = 0;
+  uint8_t *dst = NULL;
   jpeg_mem_dest(&encoder, &jpeg, &len);
 
   encoder.image_width = width;
@@ -194,6 +195,9 @@ bare_jpeg_encode(js_env_t *env, js_callback_info_t *info) {
     err = js_throw_error(env, NULL, error.message);
     assert(err == 0);
 
+    free(jpeg);
+    free(dst);
+
     jpeg_destroy_compress(&encoder);
 
     return NULL;
@@ -201,7 +205,7 @@ bare_jpeg_encode(js_env_t *env, js_callback_info_t *info) {
 
   jpeg_start_compress(&encoder, true);
 
-  uint8_t *dst = malloc((size_t) width * 3);
+  dst = malloc((size_t) width * 3);
 
   while (encoder.next_scanline < encoder.image_height) {
     const uint8_t *src = data + (size_t) encoder.next_scanline * width * 4;
