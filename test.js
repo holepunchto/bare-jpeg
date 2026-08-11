@@ -193,13 +193,28 @@ test('replaceMarkers throws on a truncated segment', (t) => {
   t.exception(() => jpeg.replaceMarkers(truncated), /Invalid JPEG/)
 })
 
-test('encode clamps out-of-range quality', (t) => {
+test('encode clamps quality above 100 down to 100', (t) => {
   const image = require('./test/fixtures/grapefruit.jpg', {
     with: { type: 'binary' }
   })
 
   const decoded = jpeg.decode(image)
 
-  t.ok(Buffer.isBuffer(jpeg.encode(decoded, { quality: 200 })))
-  t.ok(Buffer.isBuffer(jpeg.encode(decoded, { quality: -50 })))
+  t.alike(
+    jpeg.encode(decoded, { quality: 200 }),
+    jpeg.encode(decoded, { quality: 100 })
+  )
+})
+
+test('encode clamps quality below 0 up to 0', (t) => {
+  const image = require('./test/fixtures/grapefruit.jpg', {
+    with: { type: 'binary' }
+  })
+
+  const decoded = jpeg.decode(image)
+
+  t.alike(
+    jpeg.encode(decoded, { quality: -50 }),
+    jpeg.encode(decoded, { quality: 0 })
+  )
 })
