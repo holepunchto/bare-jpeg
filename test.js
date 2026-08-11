@@ -204,10 +204,7 @@ test('encode clamps quality above 100 down to 100', (t) => {
 
   const decoded = jpeg.decode(image)
 
-  t.alike(
-    jpeg.encode(decoded, { quality: 200 }),
-    jpeg.encode(decoded, { quality: 100 })
-  )
+  t.alike(jpeg.encode(decoded, { quality: 200 }), jpeg.encode(decoded, { quality: 100 }))
 })
 
 test('encode clamps quality below 0 up to 0', (t) => {
@@ -217,8 +214,5 @@ test('encode clamps quality below 0 up to 0', (t) => {
 
   const decoded = jpeg.decode(image)
 
-  t.alike(
-    jpeg.encode(decoded, { quality: -50 }),
-    jpeg.encode(decoded, { quality: 0 })
-  )
+  t.alike(jpeg.encode(decoded, { quality: -50 }), jpeg.encode(decoded, { quality: 0 }))
 })
