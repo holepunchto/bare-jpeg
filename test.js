@@ -163,3 +163,56 @@ test('replace markers preserves segment order', (t) => {
   t.alike(header.markers[2].data, headerOut.markers[2].data)
   t.alike(image, outImage) // if the roundtrip is identical, segments stayed in the same order
 })
+
+test('replace markers appends leftovers when given more than exist', (t) => {
+  const image = require('./test/fixtures/grapefruit.jpg', {
+    with: { type: 'binary' }
+  })
+
+  // grapefruit has 3 APP markers; pass 5 so the last 2 hit the leftover-append
+  // branch at the SOS/EOI boundary.
+  const markers = Array.from({ length: 5 }, (_, i) => ({
+    marker: 0xef,
+    data: Buffer.from(`marker ${i}`)
+  }))
+
+  const outImage = jpeg.replaceMarkers(image, markers)
+  const { markers: out } = jpeg.readHeader(outImage)
+
+  t.is(out.length, 5)
+  for (let i = 0; i < markers.length; i++) {
+    t.is(out[i].marker, markers[i].marker)
+    t.alike(out[i].data, markers[i].data)
+  }
+})
+
+test('replaceMarkers throws on non-JPEG input', (t) => {
+  t.exception(() => jpeg.replaceMarkers(Buffer.from([0x00, 0x00])), /Invalid JPEG/)
+})
+
+test('replaceMarkers throws on a truncated segment', (t) => {
+  // SOI, then an APP0 marker whose declared length runs past the buffer end.
+  const truncated = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0xff, 0xff])
+
+  t.exception(() => jpeg.replaceMarkers(truncated), /Invalid JPEG/)
+})
+
+test('encode clamps quality above 100 down to 100', (t) => {
+  const image = require('./test/fixtures/grapefruit.jpg', {
+    with: { type: 'binary' }
+  })
+
+  const decoded = jpeg.decode(image)
+
+  t.alike(jpeg.encode(decoded, { quality: 200 }), jpeg.encode(decoded, { quality: 100 }))
+})
+
+test('encode clamps quality below 0 up to 0', (t) => {
+  const image = require('./test/fixtures/grapefruit.jpg', {
+    with: { type: 'binary' }
+  })
+
+  const decoded = jpeg.decode(image)
+
+  t.alike(jpeg.encode(decoded, { quality: -50 }), jpeg.encode(decoded, { quality: 0 }))
+})
