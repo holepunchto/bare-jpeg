@@ -180,6 +180,10 @@ test('replace markers appends leftovers when given more than exist', (t) => {
   const { markers: out } = jpeg.readHeader(outImage)
 
   t.is(out.length, 5)
+  for (let i = 0; i < markers.length; i++) {
+    t.is(out[i].marker, markers[i].marker)
+    t.alike(out[i].data, markers[i].data)
+  }
 })
 
 test('replaceMarkers throws on non-JPEG input', (t) => {
