@@ -123,6 +123,17 @@ test('readHeader of a .jpg', (t) => {
   t.ok(header.markers.every((m) => Buffer.isBuffer(m.data)))
 })
 
+test('readHeader of a .jpg carrying an Adobe marker', (t) => {
+  const image = require('./test/fixtures/grapefruit.jpg', {
+    with: { type: 'binary' }
+  })
+
+  const header = jpeg.readHeader(withAdobeMarker(image, 2))
+
+  t.alike(header.adobe, { transform: 2 })
+  t.is(header.width, 332, 'the rest of the header is unaffected')
+})
+
 test('readHeader should throw on invalid .jpg', (t) => {
   const invalid = Buffer.from('this is not a jpeg')
   t.exception(() => {
@@ -216,3 +227,20 @@ test('encode clamps quality below 0 up to 0', (t) => {
 
   t.alike(jpeg.encode(decoded, { quality: -50 }), jpeg.encode(decoded, { quality: 0 }))
 })
+
+// Helpers
+
+// Splice an APP14 "Adobe" segment in right after the SOI marker. Cheaper than
+// shipping a second fixture just to reach the colour transform field.
+function withAdobeMarker(image, transform) {
+  const segment = Buffer.concat([
+    Buffer.from([0xff, 0xee, 0x00, 0x0e]), // APP14, segment length
+    Buffer.from('Adobe', 'ascii'),
+    Buffer.from([0x00, 0x64]), // version
+    Buffer.from([0x00, 0x00]), // flags0
+    Buffer.from([0x00, 0x00]), // flags1
+    Buffer.from([transform])
+  ])
+
+  return Buffer.concat([image.subarray(0, 2), segment, image.subarray(2)])
+}
