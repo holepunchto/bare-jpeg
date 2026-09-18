@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define BARE_JPEG_MAX_PIXELS (1ull << 28)
+
 typedef struct {
   struct jpeg_error_mgr handle;
   jmp_buf jump;
@@ -71,11 +73,31 @@ bare_jpeg_decode(js_env_t *env, js_callback_info_t *info) {
 
   if (jpeg_read_header(&decoder, true) != JPEG_HEADER_OK) goto err;
 
+  if (decoder.out_color_space == JCS_GRAYSCALE) decoder.out_color_space = JCS_RGB;
+
   jpeg_start_decompress(&decoder);
 
   JDIMENSION width = decoder.output_width;
   JDIMENSION height = decoder.output_height;
   JDIMENSION channels = decoder.output_components;
+
+  if (channels < 3) {
+    jpeg_destroy_decompress(&decoder);
+
+    err = js_throw_error(env, NULL, "Unsupported JPEG color space");
+    assert(err == 0);
+
+    return NULL;
+  }
+
+  if ((uint64_t) width * height > BARE_JPEG_MAX_PIXELS) {
+    jpeg_destroy_decompress(&decoder);
+
+    err = js_throw_error(env, NULL, "JPEG dimensions exceed maximum");
+    assert(err == 0);
+
+    return NULL;
+  }
 
   js_value_t *result;
   err = js_create_object(env, &result);
@@ -100,7 +122,12 @@ bare_jpeg_decode(js_env_t *env, js_callback_info_t *info) {
 
   uint8_t *data;
   err = js_create_unsafe_arraybuffer(env, len, (void **) &data, &buffer);
-  assert(err == 0);
+
+  if (err < 0) {
+    jpeg_destroy_decompress(&decoder);
+
+    return NULL;
+  }
 
   err = js_set_named_property(env, result, "data", buffer);
   assert(err == 0);

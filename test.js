@@ -12,6 +12,35 @@ test('decode .jpg', (t) => {
   t.is(decoded.data.length, decoded.width * decoded.height * 4)
 })
 
+test('decode .jpg with a grayscale color space', (t) => {
+  const image = require('./test/fixtures/grapefruit-grayscale.jpg', {
+    with: { type: 'binary' }
+  })
+
+  const decoded = jpeg.decode(image)
+
+  t.is(decoded.data.length, decoded.width * decoded.height * 4)
+
+  for (let i = 0; i < decoded.data.length; i += 4) {
+    if (decoded.data[i] !== decoded.data[i + 1] || decoded.data[i] !== decoded.data[i + 2]) {
+      t.fail(`pixel ${i / 4} is not gray`)
+      return
+    }
+  }
+
+  t.pass('every pixel is gray')
+})
+
+test('decode should throw on dimensions beyond the pixel cap', (t) => {
+  const image = require('./test/fixtures/grapefruit.jpg', {
+    with: { type: 'binary' }
+  })
+
+  t.exception(() => {
+    jpeg.decode(resize(image, 65500, 65500))
+  }, /JPEG dimensions exceed maximum/)
+})
+
 test('decode should throw on invalid .jpg', (t) => {
   const invalid = Buffer.from('this is not a jpeg')
   t.exception(() => {
@@ -243,4 +272,32 @@ function withAdobeMarker(image, transform) {
   ])
 
   return Buffer.concat([image.subarray(0, 2), segment, image.subarray(2)])
+}
+
+// Rewrites the frame header in place so that the declared dimensions no longer
+// match the entropy-coded data.
+function resize(image, width, height) {
+  const out = Buffer.from(image)
+
+  let offset = 2
+
+  while (offset < out.length) {
+    if (out[offset] !== 0xff) {
+      offset++
+      continue
+    }
+
+    const marker = out[offset + 1]
+
+    if (marker === 0xc0 || marker === 0xc1 || marker === 0xc2) {
+      out.writeUInt16BE(height, offset + 5)
+      out.writeUInt16BE(width, offset + 7)
+
+      return out
+    }
+
+    offset += 2 + out.readUInt16BE(offset + 2)
+  }
+
+  throw new Error('No frame header found')
 }
