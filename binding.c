@@ -75,7 +75,7 @@ bare_jpeg_decode(js_env_t *env, js_callback_info_t *info) {
 
   if (decoder.out_color_space == JCS_GRAYSCALE) decoder.out_color_space = JCS_RGB;
 
-  jpeg_start_decompress(&decoder);
+  jpeg_calc_output_dimensions(&decoder);
 
   JDIMENSION width = decoder.output_width;
   JDIMENSION height = decoder.output_height;
@@ -98,6 +98,8 @@ bare_jpeg_decode(js_env_t *env, js_callback_info_t *info) {
 
     return NULL;
   }
+
+  jpeg_start_decompress(&decoder);
 
   js_value_t *result;
   err = js_create_object(env, &result);
@@ -171,7 +173,8 @@ bare_jpeg_encode(js_env_t *env, js_callback_info_t *info) {
   assert(argc == 4);
 
   uint8_t *data;
-  err = js_get_typedarray_info(env, argv[0], NULL, (void **) &data, NULL, NULL, NULL);
+  size_t data_len;
+  err = js_get_typedarray_info(env, argv[0], NULL, (void **) &data, &data_len, NULL, NULL);
   assert(err == 0);
 
   int64_t width;
@@ -188,6 +191,13 @@ bare_jpeg_encode(js_env_t *env, js_callback_info_t *info) {
 
   if (width < 0 || width > JPEG_MAX_DIMENSION || height < 0 || height > JPEG_MAX_DIMENSION) {
     err = js_throw_error(env, NULL, "Invalid JPEG dimensions");
+    assert(err == 0);
+
+    return NULL;
+  }
+
+  if ((uint64_t) width * height * 4 > data_len) {
+    err = js_throw_error(env, NULL, "RGBA data is too short for the JPEG dimensions");
     assert(err == 0);
 
     return NULL;

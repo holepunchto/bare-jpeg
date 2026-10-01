@@ -116,6 +116,17 @@ test('encode should throw on negative dimensions', (t) => {
   }, /Invalid JPEG dimensions/i)
 })
 
+test('encode should throw on rgba data shorter than the dimensions', (t) => {
+  const invalid = {
+    width: 4096,
+    height: 4096,
+    data: Buffer.alloc(4)
+  }
+  t.exception(() => {
+    jpeg.encode(invalid)
+  }, /RGBA data is too short/i)
+})
+
 test('readHeader of a .jpg', (t) => {
   const image = require('./test/fixtures/grapefruit.jpg', {
     with: { type: 'binary' }
