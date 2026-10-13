@@ -1,5 +1,5 @@
 #include <assert.h>
-#include <bare.h>
+#include <bare/module.h>
 #include <jpeglib.h>
 #include <js.h>
 #include <setjmp.h>

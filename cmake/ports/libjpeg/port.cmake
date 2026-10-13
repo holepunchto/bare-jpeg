@@ -10,6 +10,11 @@ declare_port(
   "github:libjpeg-turbo/libjpeg-turbo#3.2.0"
   jpeg
   BYPRODUCTS ${lib}
+  ARGS
+    -DENABLE_SHARED=OFF
+    -DWITH_TESTS=OFF
+    -DWITH_TOOLS=OFF
+    -DWITH_TURBOJPEG=OFF
 )
 
 add_library(jpeg STATIC IMPORTED GLOBAL)
